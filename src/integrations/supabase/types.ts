@@ -14,7 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alarms: {
+        Row: {
+          acknowledged: boolean
+          created_at: string
+          id: string
+          is_critical: boolean
+          message: string
+          resolved_at: string | null
+          severity: string
+          source: string
+        }
+        Insert: {
+          acknowledged?: boolean
+          created_at?: string
+          id?: string
+          is_critical?: boolean
+          message: string
+          resolved_at?: string | null
+          severity: string
+          source: string
+        }
+        Update: {
+          acknowledged?: boolean
+          created_at?: string
+          id?: string
+          is_critical?: boolean
+          message?: string
+          resolved_at?: string | null
+          severity?: string
+          source?: string
+        }
+        Relationships: []
+      }
+      events: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          raw: Json
+          severity: string
+          source: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          raw?: Json
+          severity: string
+          source: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          raw?: Json
+          severity?: string
+          source?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      notification_log: {
+        Row: {
+          alarm_id: string | null
+          channel: string
+          id: string
+          recipients: string[]
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          alarm_id?: string | null
+          channel?: string
+          id?: string
+          recipients: string[]
+          sent_at?: string
+          status?: string
+        }
+        Update: {
+          alarm_id?: string | null
+          channel?: string
+          id?: string
+          recipients?: string[]
+          sent_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_log_alarm_id_fkey"
+            columns: ["alarm_id"]
+            isOneToOne: false
+            referencedRelation: "alarms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
