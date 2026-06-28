@@ -1,29 +1,59 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { StatusCards } from "@/components/dashboard/StatusCards";
+import { EventsBarChart } from "@/components/dashboard/EventsBarChart";
+import { ComparisonChart } from "@/components/dashboard/ComparisonChart";
+import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { CriticalAlarmListener } from "@/components/dashboard/CriticalAlarmListener";
+import { FloatingChatbot } from "@/components/chatbot/FloatingChatbot";
+import { NeuButton } from "@/components/neu/NeuButton";
+import { useServerFn } from "@tanstack/react-start";
+import { simulateCriticalAlarm } from "@/lib/dashboard.functions";
+import { Zap, Siren } from "lucide-react";
+import { Toaster } from "sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "UETCL Grid Monitoring" },
+      { name: "description", content: "Neumorphic real-time dashboard for events, alarms, and critical alarms across the grid." },
+      { property: "og:title", content: "UETCL Grid Monitoring" },
+      { property: "og:description", content: "Real-time grid events, alarms, and AI assistant." },
     ],
   }),
-  component: Index,
+  component: Dashboard,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function Dashboard() {
+  const simulate = useServerFn(simulateCriticalAlarm);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen px-4 py-6 md:px-8 md:py-8" style={{ background: "var(--neu-bg)" }}>
+      <Toaster position="top-right" richColors />
+      <CriticalAlarmListener />
+
+      <header className="flex items-center justify-between mb-8 max-w-7xl mx-auto">
+        <div className="flex items-center gap-3">
+          <div className="neu-raised-sm p-2.5 text-primary"><Zap className="h-5 w-5" /></div>
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold font-display">UETCL Grid Monitor</h1>
+            <p className="text-xs text-muted-foreground">Transmitting for transformation</p>
+          </div>
+        </div>
+        <NeuButton onClick={() => simulate()} className="flex items-center gap-2 text-critical">
+          <Siren className="h-4 w-4" /> Trigger test alarm
+        </NeuButton>
+      </header>
+
+      <main className="max-w-7xl mx-auto space-y-6">
+        <StatusCards />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2"><EventsBarChart /></div>
+          <ComparisonChart />
+        </div>
+        <ActivityFeed />
+      </main>
+
+      <FloatingChatbot />
     </div>
   );
 }
