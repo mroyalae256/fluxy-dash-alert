@@ -46,7 +46,7 @@ ${(lastEvents ?? []).map(e => `- [${e.created_at}] ${e.source} (${e.severity}): 
         const result = streamText({
           model: gateway("google/gemini-2.5-flash"),
           system: context,
-          messages: convertToModelMessages(messages),
+          messages: await convertToModelMessages(messages),
         });
         return result.toUIMessageStreamResponse();
       },
