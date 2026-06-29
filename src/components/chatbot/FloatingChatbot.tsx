@@ -4,14 +4,21 @@ import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NeuButton } from "@/components/neu/NeuButton";
+import { NeuToggle } from "@/components/neu/NeuToggle";
+
+type ChatFilter = "24h" | "7d" | "critical";
 
 export function FloatingChatbot() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [filter, setFilter] = useState<ChatFilter>("24h");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      body: () => ({ filter }),
+    }),
   });
 
   useEffect(() => {
@@ -53,10 +60,21 @@ export function FloatingChatbot() {
       >
         <div className="flex items-center gap-2 p-4 border-b border-border/40">
           <div className="neu-inset-sm p-2 text-primary"><Bot className="h-4 w-4" /></div>
-          <div>
+          <div className="flex-1">
             <h4 className="font-semibold text-sm">Grid Assistant</h4>
-            <p className="text-[11px] text-muted-foreground">Knows your events & alarms</p>
+            <p className="text-[11px] text-muted-foreground">Cites the records it uses</p>
           </div>
+        </div>
+        <div className="px-4 pt-3">
+          <NeuToggle<ChatFilter>
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "24h", label: "24h" },
+              { value: "7d", label: "7d" },
+              { value: "critical", label: "Critical" },
+            ]}
+          />
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
