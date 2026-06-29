@@ -41,13 +41,17 @@ function Dashboard() {
             <p className="text-xs text-muted-foreground">Transmitting for transformation</p>
           </div>
         </div>
-        <NeuButton onClick={() => simulate()} className="flex items-center gap-2 text-critical">
-          <Siren className="h-4 w-4" /> Trigger test alarm
-        </NeuButton>
+        <div className="flex items-center gap-2">
+          <AlarmSettingsControl />
+          <NeuButton onClick={() => simulate()} className="flex items-center gap-2 text-critical">
+            <Siren className="h-4 w-4" /> Trigger test alarm
+          </NeuButton>
+        </div>
       </header>
 
       <main className="max-w-7xl mx-auto space-y-6">
         <StatusCards />
+        <CriticalAlarmsPanel />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2"><EventsBarChart /></div>
           <ComparisonChart />
