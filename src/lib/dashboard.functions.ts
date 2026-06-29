@@ -177,7 +177,7 @@ export const notifyCritical = createServerFn({ method: "POST" })
 
     // Email send via Mailgun (if connector is linked); otherwise stubbed.
     let status: "sent" | "stubbed" | "failed" = "stubbed";
-    let providerInfo: Record<string, unknown> = {};
+    let providerInfo: { http_status?: number; error?: string } = {};
     const mgKey = process.env.MAILGUN_CONNECTION_KEY;
     const lovableKey = process.env.LOVABLE_API_KEY;
     const mgDomain = process.env.MAILGUN_DOMAIN;
