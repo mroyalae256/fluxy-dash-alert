@@ -4,14 +4,21 @@ import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NeuButton } from "@/components/neu/NeuButton";
+import { NeuToggle } from "@/components/neu/NeuToggle";
+
+type ChatFilter = "24h" | "7d" | "critical";
 
 export function FloatingChatbot() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [filter, setFilter] = useState<ChatFilter>("24h");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      body: () => ({ filter }),
+    }),
   });
 
   useEffect(() => {
