@@ -17,63 +17,132 @@ export type Database = {
       alarms: {
         Row: {
           acknowledged: boolean
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          bay: string | null
           created_at: string
+          data_type: string | null
+          description: string | null
           id: string
+          ioa_number: number | null
           is_critical: boolean
           message: string
           resolved_at: string | null
           severity: string
+          signal_text: string | null
           source: string
+          substation: string | null
+          voltage_kv: number | null
         }
         Insert: {
           acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          bay?: string | null
           created_at?: string
+          data_type?: string | null
+          description?: string | null
           id?: string
+          ioa_number?: number | null
           is_critical?: boolean
           message: string
           resolved_at?: string | null
           severity: string
+          signal_text?: string | null
           source: string
+          substation?: string | null
+          voltage_kv?: number | null
         }
         Update: {
           acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          bay?: string | null
           created_at?: string
+          data_type?: string | null
+          description?: string | null
           id?: string
+          ioa_number?: number | null
           is_critical?: boolean
           message?: string
           resolved_at?: string | null
           severity?: string
+          signal_text?: string | null
           source?: string
+          substation?: string | null
+          voltage_kv?: number | null
+        }
+        Relationships: []
+      }
+      critical_alarm_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
         }
         Relationships: []
       }
       events: {
         Row: {
+          bay: string | null
           created_at: string
+          data_type: string | null
+          description: string | null
           id: string
+          ioa_number: number | null
           message: string
           raw: Json
           severity: string
+          signal_text: string | null
           source: string
+          substation: string | null
           type: string
+          voltage_kv: number | null
         }
         Insert: {
+          bay?: string | null
           created_at?: string
+          data_type?: string | null
+          description?: string | null
           id?: string
+          ioa_number?: number | null
           message: string
           raw?: Json
           severity: string
+          signal_text?: string | null
           source: string
+          substation?: string | null
           type: string
+          voltage_kv?: number | null
         }
         Update: {
+          bay?: string | null
           created_at?: string
+          data_type?: string | null
+          description?: string | null
           id?: string
+          ioa_number?: number | null
           message?: string
           raw?: Json
           severity?: string
+          signal_text?: string | null
           source?: string
+          substation?: string | null
           type?: string
+          voltage_kv?: number | null
         }
         Relationships: []
       }
