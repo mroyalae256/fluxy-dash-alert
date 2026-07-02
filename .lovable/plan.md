@@ -1,72 +1,81 @@
 
 ## Goal
 
-Create a single documentation file, `LOCAL_SETUP.md`, at the project root that walks you through exporting this Lovable project and running it locally on your PC via VS Code. No code or config changes — documentation only.
+Rewrite `LOCAL_SETUP.md` as a **self-hosting guide** that walks you through:
+1. Running the exported project locally in VS Code
+2. Removing every Lovable-branded UI element
+3. Replacing Lovable Cloud + Supabase with **your own PostgreSQL database**
+4. Turning off the features that depend on Lovable services (AI chatbot, Realtime, hosted auth)
 
-## What the guide will cover
+**Documentation only** — no code changes in this task. The guide lists exactly which files to edit / delete, what to paste in their place, and how to verify each step. You (or I in a follow-up task) execute the edits.
 
-1. **Prerequisites (install first)**
-   - Git — https://git-scm.com
-   - Node.js LTS (v20+) — https://nodejs.org
-   - Bun (this project uses `bun` + `bunfig.toml`) — https://bun.sh
-   - VS Code — https://code.visualstudio.com
-   - Recommended VS Code extensions: ESLint, Prettier, Tailwind CSS IntelliSense, TypeScript Nightly
+## Chosen defaults (since you skipped the questions)
 
-2. **Get the code**
-   - Option A: Export via GitHub from Lovable (Share → Export to GitHub), then `git clone <repo>`
-   - Option B: Download ZIP from Lovable and extract
-   - Open the folder in VS Code (`code .`)
+- **Database:** self-hosted PostgreSQL — closest match, existing SQL migrations work almost as-is
+- **Backend:** keep TanStack Start server functions — smallest change vs. rewriting as FastAPI
+- **Auth:** dropped (open dashboard on your LAN)
+- **Realtime:** replaced with a 5-second poll on the critical alarms query
+- **AI chatbot:** disabled (removed from UI). Optional appendix shows how to plug in your own OpenAI key
+- **Emails:** already uses Mailgun env vars — no change
 
-3. **Install dependencies**
-   - `bun install` (preferred; respects `bunfig.toml` supply-chain guard)
-   - Fallback: `npm install`
+If any of these defaults are wrong, tell me and I'll revise.
 
-4. **Environment variables (`.env`)**
-   - The exported project already includes `.env` with the Lovable Cloud (Supabase) publishable keys — safe to keep as-is for local dev
-   - Variables explained:
-     - `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID` — used by the browser
-     - `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_PROJECT_ID` — used by server functions
-   - Optional server-only secrets you may want to add locally:
-     - `SUPABASE_SERVICE_ROLE_KEY` — required only if you run admin server functions locally (fetch from your Supabase dashboard if self-hosting; not available on Lovable Cloud)
-     - `LOVABLE_API_KEY` — required for the AI chatbot (`/api/chat`)
-     - `MAILGUN_API_KEY`, `MAILGUN_DOMAIN` — required if you want real email delivery for critical alarms
-   - How to create `.env.local` for overrides without touching the committed `.env`
+## Guide outline (sections in `LOCAL_SETUP.md`)
 
-5. **Run the dev server**
-   - `bun run dev` (or `npm run dev`)
-   - Opens on `http://localhost:8080`
-   - Hot reload notes; how to stop the server
+### Part A — Run locally in VS Code
+1. Prerequisites: Git, Node 20+, Bun, VS Code, Docker (for local Postgres), recommended extensions
+2. Get the code (GitHub export or ZIP), open in VS Code
+3. `bun install` (fallback `npm install`), notes on `bunfig.toml` 24h guard
+4. First-run smoke test on the hosted Cloud backend to confirm the app boots
+5. Dev / build / preview commands cheatsheet
 
-6. **Build & preview production**
-   - `bun run build`
-   - `bun run start` (or the project's preview script) to serve the built app
-   - Explanation that the backend targets a Cloudflare Worker via Nitro — locally it runs via Vite's Node adapter
+### Part B — Stand up your own PostgreSQL
+1. Install Postgres (Docker one-liner + native install links for Windows/macOS/Linux)
+2. Create database + user; connection-string format
+3. Apply the existing SQL migrations from `supabase/migrations/` using `psql` (they are plain Postgres SQL). Notes on skipping Supabase-only bits: RLS policies referencing `auth.uid()`, `GRANT ... TO authenticated`, extensions like `pgjwt`
+4. Seed data — same folder, same command
+5. Verify with `psql` sample query
 
-7. **Database**
-   - The app talks to the hosted Lovable Cloud Supabase instance by default (no local DB needed)
-   - If you want a fully local backend: install Docker + Supabase CLI, run `supabase start`, apply migrations from `supabase/migrations/`, then point the `.env` at `http://localhost:54321`
-   - Where migrations live and how to add new ones
+### Part C — Rip out Supabase from the code
+File-by-file list of edits:
+- **Delete** `src/integrations/supabase/` (client, client.server, auth-middleware, auth-attacher, types)
+- **Delete** `supabase/config.toml` (keep `supabase/migrations/` as your SQL source of truth, rename folder to `db/migrations/` if preferred)
+- **Add** `src/lib/db.server.ts` — a thin `pg`-based Postgres client reading `DATABASE_URL`
+- **Rewrite** `src/lib/dashboard.functions.ts` — swap every `supabase.from(...)` for `db.query(...)` with parameterized SQL. Guide includes before/after snippets for each function (`getDashboardStats`, `getComparisonStats`, `getRecentActivity`, `getActiveCriticalAlarms`, `acknowledgeAlarm`, `dismissAlarm`, `notifyCritical`)
+- **Delete** `src/components/dashboard/CriticalAlarmListener.tsx`'s realtime channel; replace with `useQuery({ refetchInterval: 5000 })` in `CriticalAlarmsPanel.tsx` (diff shown)
+- **Edit** `src/start.ts` — drop `attachSupabaseAuth` from `functionMiddleware`
+- **Edit** `src/routes/__root.tsx` — no changes needed if you skip auth
+- **Delete** `.env` Supabase keys; add `DATABASE_URL=postgres://user:pass@localhost:5432/uetcl`
 
-8. **Common commands cheatsheet**
-   - `bun install`, `bun run dev`, `bun run build`, `bun run lint`, `bun run typecheck` (whichever scripts exist in `package.json`)
+### Part D — Remove Lovable branding & telemetry
+1. **Edit `vite.config.ts`** — replace `@lovable.dev/vite-tanstack-config` with a vanilla TanStack Start config (full replacement snippet included: `@tanstack/react-start/plugin/vite`, `@vitejs/plugin-react`, `@tailwindcss/vite`, `vite-tsconfig-paths`). Removes: componentTagger, sandbox detection, error-logger plugins, HMR bridge
+2. **Delete** `src/lib/lovable-error-reporting.ts` and its import in `src/routes/__root.tsx` (the `reportLovableError` call in the root ErrorComponent)
+3. **Edit `package.json`** — remove: `@lovable.dev/vite-tanstack-config`, `@lovable.dev/mcp-js`, `@lovable.dev/vite-plugin-dev-server-bridge`, `@lovable.dev/vite-plugin-hmr-gate`, `nitro` (if you're not deploying to Cloudflare Workers)
+4. **Delete** `bunfig.toml` `minimumReleaseAgeExcludes` entries for `@lovable.dev/*` (or delete the whole guard)
+5. **Delete** `.lovable/` folder and `AGENTS.md`
+6. **Edit `src/routes/__root.tsx`** `head()` — change `title` and `description` from any "Lovable" defaults to your app name
+7. **Search-and-replace** any remaining "Lovable" mentions in JSX/text (grep pattern provided)
+8. **Optional:** remove the Lovable badge — none present in current code, but guide mentions where it would live if re-added
 
-9. **Troubleshooting**
-   - Port 8080 in use → kill process or change port
-   - `Missing Supabase environment variable(s)` → check `.env`
-   - `Unauthorized` from server functions → you're not signed in; the auth middleware requires a session
-   - Chatbot returns 401/empty → `LOVABLE_API_KEY` missing
-   - Critical-alarm emails not sending → Mailgun env vars missing (stub logs still write to `notification_log`)
-   - Bun install blocked by 24h supply-chain guard → documented `bunfig.toml` behavior
-   - Node version too old → upgrade to v20+
+### Part E — Disable the AI chatbot
+1. **Delete** `src/components/chatbot/FloatingChatbot.tsx`
+2. **Delete** `src/routes/api/chat.ts`
+3. **Delete** `src/lib/ai-gateway.server.ts`
+4. **Edit** `src/routes/index.tsx` — remove the `<FloatingChatbot />` import and render
+5. **Remove** `@ai-sdk/openai-compatible`, `@ai-sdk/react`, `ai` from `package.json`
+6. **Appendix:** how to reintroduce it with your own OpenAI key (env var, minimal server-fn shape)
 
-10. **VS Code tips**
-    - Recommended `settings.json` snippets (format on save, ESLint auto-fix)
-    - Debugging with the JavaScript Debug Terminal
-    - Using the integrated terminal to run `bun` commands
+### Part F — Run it
+1. Start Postgres, apply migrations, seed
+2. `bun run dev` → http://localhost:8080
+3. Trigger a test critical alarm via a `psql` INSERT snippet → verify sound + Mailgun email (if configured) + Ack/Dismiss round-trip
 
-11. **Project structure quick map**
-    - Short table pointing to `src/routes/`, `src/components/`, `src/lib/*.functions.ts`, `src/integrations/supabase/`, `supabase/migrations/`
+### Part G — Troubleshooting
+- Port conflicts, `DATABASE_URL` malformed, migration errors on `auth.uid()` references, Mailgun 401, alarm sound blocked by autoplay policy, TypeScript errors after deleting `supabase/types.ts` (regenerate types with `pg-to-ts` or hand-type)
+
+### Part H — Deploy (brief)
+Options once Lovable is out: Docker + Node on any VPS, Vercel, Railway, or Fly.io. One paragraph each, no full walkthrough.
 
 ## Deliverable
 
-One new file: `LOCAL_SETUP.md` at the repo root. Nothing else changes.
+One file overwritten: `LOCAL_SETUP.md` at the repo root. No other files change in this task — the guide tells you exactly what to change next. Approve and I'll write it.
