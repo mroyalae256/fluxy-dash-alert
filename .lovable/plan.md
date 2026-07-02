@@ -1,127 +1,72 @@
 
-## Scope
+## Goal
 
-Single-page neumorphic monitoring dashboard matching your sketch: three status cards (Events, Alarms, Critical Alarms), two graph cards (bar chart + today-vs-yesterday comparison), and a floating expandable chatbot. Seeded with mock data; critical alarms play a sound and trigger a stub email to 5 recipients.
+Create a single documentation file, `LOCAL_SETUP.md`, at the project root that walks you through exporting this Lovable project and running it locally on your PC via VS Code. No code or config changes — documentation only.
 
-> Note on stack: This is built in React + TanStack Start with Lovable Cloud (Postgres) — not Flutter/Python/MSSQL, as you confirmed.
+## What the guide will cover
 
-## Layout (matches sketch)
+1. **Prerequisites (install first)**
+   - Git — https://git-scm.com
+   - Node.js LTS (v20+) — https://nodejs.org
+   - Bun (this project uses `bun` + `bunfig.toml`) — https://bun.sh
+   - VS Code — https://code.visualstudio.com
+   - Recommended VS Code extensions: ESLint, Prettier, Tailwind CSS IntelliSense, TypeScript Nightly
 
-```text
-┌─────────────────────────────────────────────────┐
-│  UETCL Monitoring               [user] [theme] │
-├──────────────┬──────────────┬──────────────────┤
-│   Events     │   Alarms     │  Critical Alarms │
-│   [24h|7d]   │   count      │  count + 🔊      │
-├──────────────┴──────────────┼──────────────────┤
-│  Bar Graph (refresh 1 min)  │ Today vs Yesterday│
-│  Events / Alarms / Critical │ Comparison chart  │
-├─────────────────────────────┴──────────────────┤
-│  Recent activity feed (sortable: all/ev/al/cr) │
-└─────────────────────────────────────────────────┘
-                                       [💬 Chat] ← floating
-```
+2. **Get the code**
+   - Option A: Export via GitHub from Lovable (Share → Export to GitHub), then `git clone <repo>`
+   - Option B: Download ZIP from Lovable and extract
+   - Open the folder in VS Code (`code .`)
 
-## Neumorphism design system
+3. **Install dependencies**
+   - `bun install` (preferred; respects `bunfig.toml` supply-chain guard)
+   - Fallback: `npm install`
 
-- Background: soft off-white `#e6e9ef` (light) / `#1f2330` (dark)
-- Shadows: dual inset/outset (`8px 8px 16px #c8ccd4, -8px -8px 16px #ffffff`)
-- Rounded 2xl, no hard borders, soft pressed/raised states for cards & buttons
-- Font: Outfit (display) + Inter (body)
-- Accent: electric blue `#3b82f6` for primary, amber for alarms, red for critical
-- All tokens added to `src/styles.css` as semantic variables (`--neu-bg`, `--neu-shadow-out`, `--neu-shadow-in`, etc.) and mapped via `@theme inline`
+4. **Environment variables (`.env`)**
+   - The exported project already includes `.env` with the Lovable Cloud (Supabase) publishable keys — safe to keep as-is for local dev
+   - Variables explained:
+     - `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID` — used by the browser
+     - `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_PROJECT_ID` — used by server functions
+   - Optional server-only secrets you may want to add locally:
+     - `SUPABASE_SERVICE_ROLE_KEY` — required only if you run admin server functions locally (fetch from your Supabase dashboard if self-hosting; not available on Lovable Cloud)
+     - `LOVABLE_API_KEY` — required for the AI chatbot (`/api/chat`)
+     - `MAILGUN_API_KEY`, `MAILGUN_DOMAIN` — required if you want real email delivery for critical alarms
+   - How to create `.env.local` for overrides without touching the committed `.env`
 
-## Features
+5. **Run the dev server**
+   - `bun run dev` (or `npm run dev`)
+   - Opens on `http://localhost:8080`
+   - Hot reload notes; how to stop the server
 
-### 1. Events card
-- Toggle: **Last 24h** / **Last 7 days** (segmented neumorphic switch)
-- Big count + spark line
-- Click → opens drawer with sortable raw event list (by time / severity / source)
+6. **Build & preview production**
+   - `bun run build`
+   - `bun run start` (or the project's preview script) to serve the built app
+   - Explanation that the backend targets a Cloudflare Worker via Nitro — locally it runs via Vite's Node adapter
 
-### 2. Alarms card
-- Count of active alarms, severity breakdown chip row
+7. **Database**
+   - The app talks to the hosted Lovable Cloud Supabase instance by default (no local DB needed)
+   - If you want a fully local backend: install Docker + Supabase CLI, run `supabase start`, apply migrations from `supabase/migrations/`, then point the `.env` at `http://localhost:54321`
+   - Where migrations live and how to add new ones
 
-### 3. Critical Alarms card
-- Count + pulsing red indicator
-- On new critical alarm: play `alarm.mp3`, show toast, call `notify-critical` server function which stubs sending email to 5 placeholder addresses (logged to `notification_log` table — swap to Resend/Lovable Emails later)
+8. **Common commands cheatsheet**
+   - `bun install`, `bun run dev`, `bun run build`, `bun run lint`, `bun run typecheck` (whichever scripts exist in `package.json`)
 
-### 4. Bar graph card
-- Recharts bar chart: Events / Alarms / Critical buckets
-- Auto-refresh via `useQuery` with `refetchInterval: 60_000`
+9. **Troubleshooting**
+   - Port 8080 in use → kill process or change port
+   - `Missing Supabase environment variable(s)` → check `.env`
+   - `Unauthorized` from server functions → you're not signed in; the auth middleware requires a session
+   - Chatbot returns 401/empty → `LOVABLE_API_KEY` missing
+   - Critical-alarm emails not sending → Mailgun env vars missing (stub logs still write to `notification_log`)
+   - Bun install blocked by 24h supply-chain guard → documented `bunfig.toml` behavior
+   - Node version too old → upgrade to v20+
 
-### 5. Comparison graph card
-- Grouped bars: Today vs Yesterday for each category
+10. **VS Code tips**
+    - Recommended `settings.json` snippets (format on save, ESLint auto-fix)
+    - Debugging with the JavaScript Debug Terminal
+    - Using the integrated terminal to run `bun` commands
 
-### 6. Activity feed
-- Unified sortable list with filter chips: All • Events • Alarms • Critical
-- Sort by timestamp / severity / source
+11. **Project structure quick map**
+    - Short table pointing to `src/routes/`, `src/components/`, `src/lib/*.functions.ts`, `src/integrations/supabase/`, `supabase/migrations/`
 
-### 7. Floating chatbot
-- FAB bottom-right (neumorphic circle). Expands to panel.
-- Streaming chat via Lovable AI Gateway (`google/gemini-3-flash-preview`)
-- Server function fetches recent events/alarms summary from DB and injects into system prompt so the bot can answer "what happened today / how many critical alarms / show last 5 events"
-- Built with AI Elements (Conversation, Message, PromptInput)
+## Deliverable
 
-## Data model (Lovable Cloud / Postgres)
-
-```text
-events          (id, type, source, severity, message, raw jsonb, created_at)
-alarms          (id, source, severity, message, is_critical bool, acknowledged bool, created_at, resolved_at)
-notification_log(id, alarm_id, recipients text[], channel, status, sent_at)
-```
-
-- RLS: authenticated read; service_role write
-- Seed migration inserts ~500 events + ~80 alarms (incl. ~10 critical) across last 7 days using `random()` + `now() - interval`
-- A simulator server function (manually triggerable button "Generate test alarm") inserts a new critical alarm to demo the sound + email flow
-
-## Server functions
-
-- `getDashboardStats({ window: '24h' | '7d' })` → counts + bucketed series for bar graph
-- `getComparisonStats()` → today vs yesterday buckets
-- `getRecentActivity({ filter, sort, limit })` → unified feed
-- `notifyCritical({ alarmId })` → writes to `notification_log` with 5 placeholder recipients (stub; real send wired later)
-- `chatWithData({ messages })` → streams from Lovable AI with recent-data context
-
-## File structure
-
-```text
-src/
-  routes/
-    __root.tsx
-    index.tsx                    # dashboard page
-    api/chat.ts                  # streaming chat endpoint
-  components/
-    dashboard/
-      StatusCard.tsx
-      EventsCard.tsx
-      AlarmsCard.tsx
-      CriticalAlarmsCard.tsx
-      EventsBarChart.tsx
-      ComparisonChart.tsx
-      ActivityFeed.tsx
-    chatbot/
-      FloatingChatbot.tsx
-    ui/neu/
-      NeuCard.tsx
-      NeuButton.tsx
-      NeuToggle.tsx
-  lib/
-    dashboard.functions.ts       # createServerFn endpoints
-    notifications.functions.ts
-    ai-gateway.server.ts
-    alarm-sound.ts               # plays /sounds/alarm.mp3
-  styles.css                     # neumorphic tokens
-  assets/
-    alarm.mp3
-supabase/migrations/
-  0001_schema.sql                # tables + RLS + grants
-  0002_seed.sql                  # mock data
-```
-
-## Out of scope (for this iteration)
-
-- Real email sending (stubbed in `notification_log`; wire Lovable Emails when you provide the domain + 5 recipients)
-- Authentication (open dashboard; can add later)
-- MSSQL / Flutter / Python backend
-
-Approve and I'll build it.
+One new file: `LOCAL_SETUP.md` at the repo root. Nothing else changes.
