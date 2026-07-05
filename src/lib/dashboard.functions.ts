@@ -152,38 +152,70 @@ export const simulateCriticalAlarm = createServerFn({ method: "POST" }).handler(
   return data;
 });
 
+const DEFAULT_RECIPIENTS = [
+  "operator1@uetcl.example",
+  "operator2@uetcl.example",
+  "supervisor@uetcl.example",
+  "control-room@uetcl.example",
+  "oncall@uetcl.example",
+];
+
+function sanitizeRecipients(list?: string[]): string[] {
+  const cleaned = (list ?? [])
+    .map((r) => r.trim())
+    .filter((r) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r));
+  return cleaned.length ? cleaned : DEFAULT_RECIPIENTS;
+}
+
+async function sendMailgun(subject: string, text: string, to: string[]) {
+  const mgKey = process.env.MAILGUN_CONNECTION_KEY;
+  const lovableKey = process.env.LOVABLE_API_KEY;
+  const mgDomain = process.env.MAILGUN_DOMAIN;
+  if (!mgKey || !lovableKey || !mgDomain) {
+    return { status: "stubbed" as const, http_status: undefined, error: "Mailgun connector not configured" };
+  }
+  try {
+    const body = new URLSearchParams({
+      from: `UETCL Grid Monitor <alerts@${mgDomain}>`,
+      to: to.join(","),
+      subject,
+      text,
+    });
+    const res = await fetch(`https://connector-gateway.lovable.dev/mailgun/${mgDomain}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Bearer ${lovableKey}`,
+        "X-Connection-Api-Key": mgKey,
+      },
+      body,
+    });
+    return {
+      status: (res.ok ? "sent" : "failed") as "sent" | "failed",
+      http_status: res.status,
+      error: res.ok ? undefined : await res.text().catch(() => undefined),
+    };
+  } catch (e) {
+    return { status: "failed" as const, http_status: undefined, error: String(e) };
+  }
+}
+
 export const notifyCritical = createServerFn({ method: "POST" })
-  .inputValidator((input: { alarmId: string }) => input)
+  .inputValidator((input: { alarmId: string; recipients?: string[] }) => input)
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const recipients = [
-      "operator1@uetcl.example",
-      "operator2@uetcl.example",
-      "supervisor@uetcl.example",
-      "control-room@uetcl.example",
-      "oncall@uetcl.example",
-    ];
-
-    // Fetch alarm to include in email body
+    const recipients = sanitizeRecipients(data.recipients);
     const { data: alarm } = await supabaseAdmin
       .from("alarms")
       .select("source,message,severity,substation,bay,description,ioa_number,created_at")
       .eq("id", data.alarmId)
       .maybeSingle();
 
-    // Email send via Mailgun (if connector is linked); otherwise stubbed.
     let status: "sent" | "stubbed" | "failed" = "stubbed";
     let providerInfo: { http_status?: number; error?: string } = {};
-    const mgKey = process.env.MAILGUN_CONNECTION_KEY;
-    const lovableKey = process.env.LOVABLE_API_KEY;
-    const mgDomain = process.env.MAILGUN_DOMAIN;
-    if (mgKey && lovableKey && mgDomain && alarm) {
-      try {
-        const body = new URLSearchParams({
-          from: `UETCL Grid Monitor <alerts@${mgDomain}>`,
-          to: recipients.join(","),
-          subject: `CRITICAL ALARM: ${alarm.source} - ${alarm.message}`,
-          text: `A critical alarm has been raised.
+    if (alarm) {
+      const subject = `CRITICAL ALARM: ${alarm.source} - ${alarm.message}`;
+      const text = `A critical alarm has been raised.
 
 Source: ${alarm.source}
 Substation: ${alarm.substation ?? "n/a"}
@@ -192,23 +224,10 @@ IOA: ${alarm.ioa_number ?? "n/a"}
 Severity: ${alarm.severity}
 Time: ${alarm.created_at}
 
-${alarm.description ?? alarm.message}`,
-        });
-        const res = await fetch(`https://connector-gateway.lovable.dev/mailgun/${mgDomain}/messages`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Authorization: `Bearer ${lovableKey}`,
-            "X-Connection-Api-Key": mgKey,
-          },
-          body,
-        });
-        status = res.ok ? "sent" : "failed";
-        providerInfo = { http_status: res.status };
-      } catch (e) {
-        status = "failed";
-        providerInfo = { error: String(e) };
-      }
+${alarm.description ?? alarm.message}`;
+      const r = await sendMailgun(subject, text, recipients);
+      status = r.status;
+      providerInfo = { http_status: r.http_status, error: r.error };
     }
 
     const { data: log, error } = await supabaseAdmin.from("notification_log").insert({
@@ -220,6 +239,40 @@ ${alarm.description ?? alarm.message}`,
     if (error) throw error;
     return { ...log, providerInfo };
   });
+
+export const sendTestEmail = createServerFn({ method: "POST" })
+  .inputValidator((input: { recipients?: string[] }) => input)
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const recipients = sanitizeRecipients(data.recipients);
+    const subject = "UETCL Grid Monitor — Test notification";
+    const text = `This is a test message from UETCL Grid Monitor.
+If you received this, your critical-alarm email pipeline is working.
+Sent at: ${new Date().toISOString()}`;
+    const r = await sendMailgun(subject, text, recipients);
+    const { data: log, error } = await supabaseAdmin.from("notification_log").insert({
+      alarm_id: null,
+      recipients,
+      channel: "email-test",
+      status: r.status,
+    }).select().single();
+    if (error) throw error;
+    return { ...log, providerInfo: { http_status: r.http_status, error: r.error } };
+  });
+
+export const getNotificationLog = createServerFn({ method: "GET" })
+  .inputValidator((input: { limit?: number }) => input ?? {})
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("notification_log")
+      .select("id,alarm_id,recipients,channel,status,sent_at")
+      .order("sent_at", { ascending: false })
+      .limit(data?.limit ?? 50);
+    if (error) throw error;
+    return rows ?? [];
+  });
+
 
 export const getActiveCriticalAlarms = createServerFn({ method: "GET" }).handler(async () => {
   const supabase = await publicClient();

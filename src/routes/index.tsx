@@ -5,6 +5,7 @@ import { ComparisonChart } from "@/components/dashboard/ComparisonChart";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { CriticalAlarmListener } from "@/components/dashboard/CriticalAlarmListener";
 import { CriticalAlarmsPanel } from "@/components/dashboard/CriticalAlarmsPanel";
+import { AuditTrail } from "@/components/dashboard/AuditTrail";
 import { AlarmSettingsControl } from "@/components/dashboard/AlarmSettings";
 import { FloatingChatbot } from "@/components/chatbot/FloatingChatbot";
 import { NeuButton } from "@/components/neu/NeuButton";
@@ -56,7 +57,10 @@ function Dashboard() {
           <div className="lg:col-span-2"><EventsBarChart /></div>
           <ComparisonChart />
         </div>
-        <ActivityFeed />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ActivityFeed />
+          <AuditTrail />
+        </div>
       </main>
 
       <FloatingChatbot />

@@ -21,8 +21,9 @@ export function CriticalAlarmListener() {
 
     const sendEmail = async (alarmId: string) => {
       try {
-        const res = await notify({ data: { alarmId } });
-        if (res.status === "sent") toast.success("Email sent to 5 operators");
+        const { recipients } = getAlarmSettingsSnapshot();
+        const res = await notify({ data: { alarmId, recipients } });
+        if (res.status === "sent") toast.success(`Email sent to ${recipients.length} operator(s)`);
         else toast.message(`Notification logged (${res.status})`, {
           description: "Configure Mailgun connector to actually deliver email.",
         });
@@ -31,6 +32,7 @@ export function CriticalAlarmListener() {
         toast.error("Failed to notify operators");
       }
     };
+
 
     const handleNew = async (alarm: { id: string; source: string; message: string }) => {
       toast.error(`CRITICAL: ${alarm.source}`, { description: alarm.message, duration: 8000 });
