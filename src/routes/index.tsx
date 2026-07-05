@@ -5,6 +5,7 @@ import { ComparisonChart } from "@/components/dashboard/ComparisonChart";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { CriticalAlarmListener } from "@/components/dashboard/CriticalAlarmListener";
 import { CriticalAlarmsPanel } from "@/components/dashboard/CriticalAlarmsPanel";
+import { AuditTrail } from "@/components/dashboard/AuditTrail";
 import { AlarmSettingsControl } from "@/components/dashboard/AlarmSettings";
 import { FloatingChatbot } from "@/components/chatbot/FloatingChatbot";
 import { NeuButton } from "@/components/neu/NeuButton";
