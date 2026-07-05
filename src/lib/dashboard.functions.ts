@@ -10,7 +10,7 @@ export type StatsWindow = "24h" | "7d";
 export const getDashboardStats = createServerFn({ method: "GET" })
   .inputValidator((input: { window: StatsWindow }) => input)
   .handler(async ({ data }) => {
-    const supabase = publicClient();
+    const supabase = await publicClient();
     const hours = data.window === "24h" ? 24 : 24 * 7;
     const since = new Date(Date.now() - hours * 3600_000).toISOString();
     const buckets = data.window === "24h" ? 24 : 7;
@@ -60,7 +60,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
   });
 
 export const getComparisonStats = createServerFn({ method: "GET" }).handler(async () => {
-  const supabase = publicClient();
+  const supabase = await publicClient();
   const now = new Date();
   const startToday = new Date(now); startToday.setHours(0, 0, 0, 0);
   const startYesterday = new Date(startToday.getTime() - 24 * 3600_000);
@@ -100,7 +100,7 @@ export type ActivitySort = "newest" | "severity";
 export const getRecentActivity = createServerFn({ method: "GET" })
   .inputValidator((input: { filter: ActivityFilter; sort: ActivitySort; limit?: number }) => input)
   .handler(async ({ data }) => {
-    const supabase = publicClient();
+    const supabase = await publicClient();
     const limit = data.limit ?? 50;
     const items: {
       id: string; kind: "event" | "alarm" | "critical";
@@ -222,7 +222,7 @@ ${alarm.description ?? alarm.message}`,
   });
 
 export const getActiveCriticalAlarms = createServerFn({ method: "GET" }).handler(async () => {
-  const supabase = publicClient();
+  const supabase = await publicClient();
   const { data, error } = await supabase
     .from("alarms")
     .select("id,source,message,severity,substation,voltage_kv,bay,ioa_number,description,acknowledged,acknowledged_at,acknowledged_by,resolved_at,created_at")
