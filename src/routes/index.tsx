@@ -57,7 +57,10 @@ function Dashboard() {
           <div className="lg:col-span-2"><EventsBarChart /></div>
           <ComparisonChart />
         </div>
-        <ActivityFeed />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ActivityFeed />
+          <AuditTrail />
+        </div>
       </main>
 
       <FloatingChatbot />
