@@ -1,8 +1,24 @@
 import { useEffect, useState } from "react";
 
-const KEY = "uetcl.alarm-settings.v1";
-export type AlarmSettings = { soundEnabled: boolean; volume: number };
-const DEFAULTS: AlarmSettings = { soundEnabled: true, volume: 0.7 };
+const KEY = "uetcl.alarm-settings.v2";
+
+export type AlarmSettings = {
+  soundEnabled: boolean;
+  volume: number;
+  recipients: string[];
+};
+
+const DEFAULTS: AlarmSettings = {
+  soundEnabled: true,
+  volume: 0.7,
+  recipients: [
+    "operator1@uetcl.com",
+    "operator2@uetcl.com",
+    "supervisor@uetcl.com",
+    "manager@uetcl.com",
+    "cto@uetcl.com",
+  ],
+};
 
 function read(): AlarmSettings {
   if (typeof window === "undefined") return DEFAULTS;
